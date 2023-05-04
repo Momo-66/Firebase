@@ -36,6 +36,7 @@ for user in user_list:
 # print(routine_list) #전체 루틴 리스트 출력
 
 
+## 유저&루틴 Case 분류 ##
 # 전체 유저 순회
 for user in user_list:
     routine_ref = db.collection('demo').document(user).collection('Routine_Collection').stream()
@@ -89,14 +90,7 @@ def routine_plus(transaction, routine):
         transaction.update(routine_ref, {
         'streak': new_streak
     })
-    
-    
-# # 루틴 streak 추가
-for user in user_list:
-    routine_ref = db.collection('demo').document(user).collection('Routine_Collection').stream()
-    for routine in routine_ref:
-        user_routine_dict = routine.to_dict()
-        routine_list.append(routine.id)
+
 
 #루틴 streak 초기화
 def routine_zero(transaction, user):
