@@ -8,7 +8,7 @@ firebase_admin.initialize_app(cred, {
 db = firestore.client()
 
 transaction = db.transaction()
-docs = db.collection('demo').stream()
+docs = db.collection('demo2').stream()
 
 user_list = [] #전체 유저 리스트
 routine_list = [] #전체 루틴 리스트
@@ -24,22 +24,14 @@ for doc in docs:
 
 # 전체 루틴 리스트 가져오기
 for user in user_list:
-    routine_ref = db.collection('demo').document(user).collection('Routine_Collection').stream()
+    routine_ref = db.collection('demo2').document(user).collection('Routine_Collection').stream()
     for routine in routine_ref:
         user_routine_dict = routine.to_dict()
-        # routine_list.append(routine) 
+        routine_list.append(routine) 
         
-        #루틴 ID로 출력
-        routine_list.append(routine.id)
-
-# print(user_list) #전체 유저 리스트 출력
-# print(routine_list) #전체 루틴 리스트 출력
-
-
-## 유저&루틴 Case 분류 ##
-# 전체 유저 순회
+        
 for user in user_list:
-    routine_ref = db.collection('demo').document(user).collection('Routine_Collection').stream()
+    routine_ref = db.collection('demo2').document(user).collection('Routine_Collection').stream()
     is_all_finished = True
     
     user_routine_dict=[]
@@ -58,12 +50,11 @@ for user in user_list:
     if is_all_finished == True:
         finished_all_users.append(user)
 
-
 @firestore.transactional
 
 #유저 streak 추가(완)
 def streak_plus(transaction, user):
-    routine_ref = db.collection('User_Collection').document(user)
+    routine_ref = db.collection('demo2').document(user)
     snapshot = routine_ref.get(transaction=transaction)
     new_streak = snapshot.get('streak') + 1
     transaction.update(routine_ref, {
@@ -72,33 +63,27 @@ def streak_plus(transaction, user):
 
 #유저 streak 초기화(완)
 def streak_zero(transaction, user):
-    routine_ref = db.collection('demo').document(user)
-    # snapshot = routine_ref.get(transaction=transaction)
+    routine_ref = db.collection('demo2').document(user)
     new_streak = 0
     transaction.update(routine_ref, {
         'streak': new_streak
     })
 
 # 루틴 streak 추가
-def routine_plus(transaction, routine):
-    for user in user_list:
-        routine_ref = db.collection('demo').document(user).collection('Routine_Collection').stream(user)
-        ## @@2차 컬렉션 루틴 수정해야함.@@
-        ## 2중 for문 유저 리스트에서 조회 -> completed_routine 상 routine 값 수정
-        snapshot = routine_ref.get(transaction=transaction)
-        new_streak = snapshot.get('streak') + 1
-        transaction.update(routine_ref, {
-        'streak': new_streak
-    })
-
-
-#루틴 streak 초기화
-def routine_zero(transaction, user):
-    routine_ref = db.collection('User_Collection').document(user)
+def routine_plus(transaction, routine_ref):
     snapshot = routine_ref.get(transaction=transaction)
     new_streak = snapshot.get('streak') + 1
     transaction.update(routine_ref, {
-        'streak': new_streak
+        'streak': new_streak,
+        'finished': False
+    })
+
+#루틴 streak 초기화
+def routine_zero(transaction, routine_ref):
+    new_streak = 0
+    transaction.update(routine_ref, {
+        'streak': new_streak,
+        'finished': False
     })
 
 for u in finished_all_users:
@@ -107,10 +92,8 @@ for u in finished_all_users:
 for u in finished_not_users:
     streak_zero(transaction, u)
 
-for r in completed_routine:
-    routine_plus(transaction, r)
-    
 for r in not_completed_routine:
-    routine_zero(transaction, r)
-
-
+    routine_zero(transaction, r.reference)
+    
+for r in completed_routine:
+    routine_plus(transaction, r.reference)
