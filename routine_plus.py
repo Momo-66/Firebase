@@ -1,14 +1,13 @@
 import firebase_admin
 from firebase_admin import firestore, credentials
 
-cred = credentials.Certificate('functions\key.json')
+cred = credentials.Certificate('key.json')
 firebase_admin.initialize_app(cred, {
     'projectId': 'momo-89849',
 })
 db = firestore.client()
-
 transaction = db.transaction()
-docs = db.collection('demo2').stream()
+docs = db.collection('User_Collection').stream()
 
 user_list = [] #전체 유저 리스트
 routine_list = [] #전체 루틴 리스트
@@ -24,14 +23,14 @@ for doc in docs:
 
 # 전체 루틴 리스트 가져오기
 for user in user_list:
-    routine_ref = db.collection('demo2').document(user).collection('Routine_Collection').stream()
+    routine_ref = db.collection('User_Collection').document(user).collection('Routine_Collection').stream()
     for routine in routine_ref:
         user_routine_dict = routine.to_dict()
         routine_list.append(routine) 
         
         
 for user in user_list:
-    routine_ref = db.collection('demo2').document(user).collection('Routine_Collection').stream()
+    routine_ref = db.collection('User_Collection').document(user).collection('Routine_Collection').stream()
     is_all_finished = True
     
     user_routine_dict=[]
@@ -43,6 +42,7 @@ for user in user_list:
         if user_routine_dict['finished'] == False:
             finished_not_users.append(user) #user streak 초기화
             not_completed_routine.append(routine) #user streak 초기화 & finished:False로 초기화
+            is_all_finished = False
         # 루틴을 완료한 경우
         elif user_routine_dict['finished'] == True:
             completed_routine.append(routine) #routine streak +1 & finished:False 초기화
@@ -51,24 +51,6 @@ for user in user_list:
         finished_all_users.append(user)
 
 @firestore.transactional
-
-#유저 streak 추가(완)
-def streak_plus(transaction, user):
-    routine_ref = db.collection('demo2').document(user)
-    snapshot = routine_ref.get(transaction=transaction)
-    new_streak = snapshot.get('streak') + 1
-    transaction.update(routine_ref, {
-        'streak': new_streak
-    })
-
-#유저 streak 초기화(완)
-def streak_zero(transaction, user):
-    routine_ref = db.collection('demo2').document(user)
-    new_streak = 0
-    transaction.update(routine_ref, {
-        'streak': new_streak
-    })
-
 # 루틴 streak 추가
 def routine_plus(transaction, routine_ref):
     snapshot = routine_ref.get(transaction=transaction)
@@ -77,23 +59,6 @@ def routine_plus(transaction, routine_ref):
         'streak': new_streak,
         'finished': False
     })
-
-#루틴 streak 초기화
-def routine_zero(transaction, routine_ref):
-    new_streak = 0
-    transaction.update(routine_ref, {
-        'streak': new_streak,
-        'finished': False
-    })
-
-for u in finished_all_users:
-    streak_plus(transaction, u)
-
-for u in finished_not_users:
-    streak_zero(transaction, u)
-
-for r in not_completed_routine:
-    routine_zero(transaction, r.reference)
     
 for r in completed_routine:
     routine_plus(transaction, r.reference)
