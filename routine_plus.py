@@ -21,9 +21,7 @@ not_completed_routine = [] #완료되지 않은 루틴
 @firestore.transactional
 def routine_plus(transaction, routine_ref):
     snapshot = routine_ref.get(transaction=transaction)
-    new_streak = snapshot.get('streak') + 1
     transaction.update(routine_ref, {
-        'streak': new_streak,
         'finished': False
     })
 
